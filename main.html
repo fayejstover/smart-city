@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Maintenance City</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+:root {
+  --bg:        #F6F6F4;
+  --surface:   #FFFFFF;
+  --border:    #E3E3E0;
+  --border-2:  #D0D0CB;
+  --text-1:    #1A1A18;
+  --text-2:    #5C5C57;
+  --text-3:    #9C9C95;
+  --mono:      'DM Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+  --nav-w:     340px;
+  --ease:      cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text-1);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  cursor: auto;
+}
+
+#c { cursor: crosshair; }
+.enter-btn { cursor: pointer; }
+.ltab { cursor: pointer; }
+.obj-card-close { cursor: pointer; }
+.narr-location-btn { cursor: pointer; }
+
+/* CUSTOM CURSOR */
+#cur {
+  position: fixed;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-1);
+  pointer-events: none;
+  z-index: 999;
+  transform: translate(-50%,-50%);
+  transition: width .15s, height .15s, background .15s;
+  display: none;
+}
+#cur.active { display: block; }
+#cur.hover  { width: 18px; height: 18px; background: #1D4E8F; }
+
+/* CANVAS */
+#c {
+  position: fixed;
+  top: 0; left: var(--nav-w);
+  width: calc(100vw - var(--nav-w));
+  height: 100vh;
+  z-index: 0;
+  display: none;
+}
+#c.active { display: block; }
+
+/* CROSSHAIR */
+#xhair {
+  position: fixed;
+  top: 50%; left: calc(var(--nav-w) + (100vw - var(--nav-w)) / 2);
+  transform: translate(-50%,-50%);
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s;
+}
+#xhair.on { opacity: .22; }
+#xhair::before, #xhair::after {
+  content: '';
+  position: absolute;
+  background: var(--text-1);
+}
+#xhair::before { width:1px; height:10px; left:0; top:-5px; }
+#xhair::after  { width:10px; height:1px; left:-5px; top:0; }
+
+/* LAYER FLASH */
+#ltrans {
+  position: fixed;
+  top: 0; left: var(--nav-w); right: 0; bottom: 0;
+  z-index: 35;
+  pointer-events: none;
+  opacity: 0;
+  background: var(--surface);
+  transition: opacity .15s;
+}
+#ltrans.f { opacity: .3; }
+
+/* INTRO */
+#intro {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--surface);
+  display: flex;
+  transition: opacity .8s var(--ease), visibility .8s;
+}
+#intro.gone { opacity:0; visibility:hidden; pointer-events:none; }
+
+.intro-left {
+  width: var(--nav-w);
+  border-right: 1px solid var(--border);
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.intro-logo {
+  font-family: var(--mono);
+  font-size: .65rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.intro-meta-small {
+  font-family: var(--mono);
+  font-size: .58rem;
+  color: var(--text-3);
+  line-height: 1.9;
+}
+.intro-right {
+  flex: 1;
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 600px;
+}
+.intro-eyebrow {
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 1.5rem;
+}
+.intro-title {
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 300;
+  letter-spacing: -.03em;
+  line-height: 1.0;
+  color: var(--text-1);
+  margin-bottom: 2rem;
+}
+.intro-title strong { font-weight: 600; }
+.intro-body {
+  font-size: .92rem;
+  line-height: 1.78;
+  color: var(--text-2);
+  font-weight: 300;
+  margin-bottom: 2.5rem;
+  max-width: 440px;
+}
+.intro-steps {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  margin-bottom: 2.5rem;
+}
+.intro-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.step-num {
+  font-family: var(--mono);
+  font-size: .58rem;
+  color: var(--text-3);
+  padding-top: .1rem;
+  min-width: 22px;
+  flex-shrink: 0;
+}
+.step-text {
+  font-size: .78rem;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.step-text strong { color: var(--text-1); font-weight: 500; }
+.enter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  font-family: var(--sans);
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--surface);
+  background: var(--text-1);
+  border: none;
+  border-radius: 6px;
+  padding: .85rem 1.75rem;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+  width: fit-content;
+  margin-bottom: 1rem;
+}
+.enter-btn:hover { background: #2e2e2c; transform: translateY(-1px); }
+.enter-btn svg { width:14px; height:14px; }
+.intro-controls {
+  font-family: var(--mono);
+  font-size: .56rem;
+  color: var(--text-3);
+  letter-spacing: .06em;
+}
+
+/* LEFT NAV */
+#nav {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--nav-w);
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .5s .3s var(--ease);
+  overflow: hidden;
+}
+#nav.on { opacity: 1; pointer-events: all; }
+
+.nav-header {
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.nav-logo {
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.nav-step-counter {
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: var(--text-3);
+}
+
+/* LAYER TABS */
+.layer-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ltab {
+  flex: 1;
+  padding: .62rem .4rem;
+  font-family: var(--mono);
+  font-size: .5rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: center;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.ltab + .ltab { border-left: 1px solid var(--border); }
+.ltab:hover { color: var(--text-1); background: var(--bg); }
+.ltab.on { color: var(--text-1); border-bottom-color: var(--text-1); }
+
+/* NARRATIVE */
+.nav-narrative {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.nav-narrative::-webkit-scrollbar { width: 3px; }
+.nav-narrative::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+.narr-layer-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: .52rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .28rem .65rem;
+  border-radius: 100px;
+  border: 1px solid currentColor;
+  width: fit-content;
+}
+.narr-step {
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: var(--text-3);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.narr-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.3;
+  color: var(--text-1);
+  margin-top: .3rem;
+}
+.narr-body {
+  font-size: .78rem;
+  line-height: 1.78;
+  color: var(--text-2);
+  font-weight: 300;
+}
+.narr-quote {
+  border-left: 3px solid var(--border-2);
+  padding: .7rem .95rem;
+  background: var(--bg);
+  border-radius: 0 4px 4px 0;
+}
+.narr-quote-text {
+  font-family: var(--mono);
+  font-size: .62rem;
+  line-height: 1.72;
+  color: var(--text-2);
+  font-style: italic;
+  margin-bottom: .38rem;
+}
+.narr-quote-src {
+  font-family: var(--mono);
+  font-size: .5rem;
+  color: var(--text-3);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.narr-divider { height: 1px; background: var(--border); margin: .15rem 0; }
+
+.narr-instruction {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  padding: .78rem .95rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.narr-instruction-icon { font-size: .88rem; flex-shrink: 0; }
+.narr-instruction-text { font-size: .71rem; line-height: 1.62; color: var(--text-2); }
+.narr-instruction-text strong {
+  font-weight: 500;
+  color: var(--text-1);
+  display: block;
+  margin-bottom: .12rem;
+}
+.key-chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: .48rem;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  padding: .08rem .32rem;
+  color: var(--text-2);
+}
+
+/* OBJECT CARD */
+.narr-obj-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: none;
+}
+.narr-obj-card.on { display: block; }
+.obj-card-header {
+  padding: .7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.obj-card-src {
+  font-family: var(--mono);
+  font-size: .5rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.obj-card-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: .75rem; line-height: 1;
+  transition: color .15s;
+}
+.obj-card-close:hover { color: var(--text-1); }
+.obj-card-body { padding: 1rem; }
+.obj-card-label {
+  font-size: .86rem;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: .38rem;
+}
+.obj-card-desc {
+  font-size: .74rem;
+  line-height: 1.72;
+  color: var(--text-2);
+  margin-bottom: .7rem;
+}
+.obj-card-quote {
+  font-family: var(--mono);
+  font-size: .61rem;
+  line-height: 1.65;
+  color: var(--text-3);
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  padding-top: .72rem;
+  display: none;
+}
+.obj-card-quote.on { display: block; }
+
+/* LOCATION BUTTONS */
+.narr-location-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .48rem;
+  font-family: var(--mono);
+  font-size: .56rem;
+  letter-spacing: .06em;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  padding: .46rem .82rem;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: all .2s;
+  margin-right: .45rem;
+  margin-top: .22rem;
+}
+.narr-location-btn:hover {
+  background: var(--surface);
+  border-color: var(--text-1);
+  color: var(--text-1);
+}
+.narr-location-btn .loc-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* PROGRESS */
+.nav-footer {
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  flex-shrink: 0;
+}
+.progress-label {
+  font-family: var(--mono);
+  font-size: .5rem;
+  color: var(--text-3);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .48rem;
+  display: flex;
+  justify-content: space-between;
+}
+.progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--text-1);
+  border-radius: 3px;
+  transition: width .4s var(--ease);
+  width: 33%;
+}
+
+/* TOP BAR */
+#topbar {
+  position: fixed;
+  top: 0; left: var(--nav-w); right: 0;
+  height: 46px;
+  background: rgba(246,246,244,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1.4rem;
+  opacity: 0;
+  transition: opacity .5s .3s;
+}
+#topbar.on { opacity: 1; }
+.tb-layer-name { font-size: .74rem; font-weight: 500; color: var(--text-1); }
+.tb-sep { width:1px; height:15px; background:var(--border); }
+.tb-hint { font-family: var(--mono); font-size: .56rem; color: var(--text-3); }
+
+/* MINIMAP */
+#minimap {
+  position: fixed;
+  bottom: 1.2rem; right: 1.2rem;
+  width: 140px; height: 140px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  z-index: 45;
+  opacity: 0;
+  transition: opacity .5s .5s;
+  overflow: hidden;
+}
+#minimap.on { opacity: 1; }
+#minimap canvas { width: 100%; height: 100%; display: block; }
+.minimap-label {
+  position: absolute;
+  top: .38rem; left: .5rem;
+  font-family: var(--mono);
+  font-size: .42rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+/* WAYPOINT TOAST */
+#waypoint-toast {
+  position: fixed;
+  bottom: 1.2rem;
+  left: calc(var(--nav-w) + (100vw - var(--nav-w)) / 2);
+  transform: translateX(-50%) translateY(10px);
+  z-index: 55;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .62rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: .72rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s, transform .3s;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+}
+#waypoint-toast.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.wt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.wt-text { font-family: var(--mono); font-size: .58rem; color: var(--text-2); }
+.wt-text strong { color: var(--text-1); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="xhair"></div>
+<div id="ltrans"></div>
+<canvas id="c"></canvas>
+
+<!-- INTRO -->
+<div id="intro">
+  <div class="intro-left">
+    <div class="intro-logo">Speculative Design Proposal</div>
+    <div class="intro-meta-small">
+      Technology &amp; the Built Environment<br>
+      Final Project<br>
+      2025
+    </div>
+  </div>
+  <div class="intro-right">
+    <div class="intro-eyebrow">The Maintenance City</div>
+    <h1 class="intro-title">What if the city was<br><strong>designed to be read?</strong></h1>
+    <p class="intro-body">
+      Walk past a data center and you will not know what it is. A low, windowless box.
+      No signage explaining what it consumes, who maintains it, or whose data flows through it.
+      This project intervenes in that invisibility.
+    </p>
+    <div class="intro-steps">
+      <div class="intro-step">
+        <span class="step-num">01</span>
+        <span class="step-text"><strong>Surface</strong> - The city as residents experience it. Smooth, efficient, optimized. The seduction.</span>
+      </div>
+      <div class="intro-step">
+        <span class="step-num">02</span>
+        <span class="step-text"><strong>Extraction</strong> - What runs underneath. Surveillance, data harvesting, ghost labor. The critique.</span>
+      </div>
+      <div class="intro-step">
+        <span class="step-num">03</span>
+        <span class="step-text"><strong>Proposal</strong> - The same city redesigned for legibility, accountability, and resident governance.</span>
+      </div>
+    </div>
+    <button class="enter-btn" id="enterbtn">
+      Enter the City
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 7h10M7 2l5 5-5 5"/>
+      </svg>
+    </button>
+    <div class="intro-controls">
+      WASD / Arrow keys to move &nbsp;&middot;&nbsp; Mouse drag to look &nbsp;&middot;&nbsp; Click objects to inspect
+    </div>
+  </div>
+</div>
+
+<!-- LEFT NAV -->
+<div id="nav">
+  <div class="nav-header">
+    <span class="nav-logo">The Maintenance City</span>
+    <span class="nav-step-counter" id="stepctr">Layer 1 of 3</span>
+  </div>
+  <div class="layer-tabs">
+    <button class="ltab on" data-l="surface"  onclick="setLayer('surface')">01 Surface</button>
+    <button class="ltab"    data-l="extract"  onclick="setLayer('extract')">02 Extraction</button>
+    <button class="ltab"    data-l="proposal" onclick="setLayer('proposal')">03 Proposal</button>
+  </div>
+  <div class="nav-narrative" id="narrative"></div>
+  <div class="nav-footer">
+    <div class="progress-label">
+      <span>Progress through layers</span>
+      <span id="pct">33%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="pfill"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="tb-layer-name" id="tblayer">Layer 01 - Surface</span>
+  <div class="tb-sep"></div>
+  <span class="tb-hint">
+    <span class="key-chip">W</span><span class="key-chip">A</span><span class="key-chip">S</span><span class="key-chip">D</span>
+    move &nbsp;&middot;&nbsp; Drag to look &nbsp;&middot;&nbsp; Click to inspect
+  </span>
+</div>
+
+<!-- MINIMAP -->
+<div id="minimap">
+  <div class="minimap-label">You are here</div>
+  <canvas id="mm"></canvas>
+</div>
+
+<!-- WAYPOINT TOAST -->
+<div id="waypoint-toast">
+  <div class="wt-dot" id="wt-dot"></div>
+  <div class="wt-text" id="wt-text"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+// ================================================================
+// NARRATIVE DATA
+// ================================================================
+var NARRATIVES = {
+  surface: {
+    badge: { text:'01 / Surface', col:'#2D6A4F' },
+    step:    'Scene 01 of 03',
+    heading: 'The city as you experience it',
+    body:    'You are standing on a street. Traffic moves smoothly. Notifications arrive on time. The infrastructure is invisible - which is the point. Shannon Mattern calls this the "city-as-computer" model: urban space reimagined as an information-processing machine where efficiency is the only legible value.',
+    quotes: [
+      { text: '"The smart city\'s systems are built to be used, not read. To be consumed, not questioned."', src: 'Mattern, A City Is Not a Computer, 2021' },
+      { text: '"Technologies embody specific forms of power and authority and build order in our world."',   src: 'Winner, Do Artifacts Have Politics?, 1980' },
+    ],
+    instructions: [
+      { icon: '&#8593;', label: 'Walk through the city',  body: 'Use <span class="key-chip">W</span><span class="key-chip">A</span><span class="key-chip">S</span><span class="key-chip">D</span> or arrow keys. Drag mouse to look around.' },
+      { icon: '&#9654;', label: 'Click any object',       body: 'Click cameras, the data center, pedestrians, or buildings to read the surface view.' },
+      { icon: '&#8594;', label: 'When ready, advance',    body: 'Switch to Layer 02 - Extraction to pull back the curtain.' },
+    ],
+    locations: [
+      { key:'start',  col:'#888888', label:'Main Intersection' },
+      { key:'server', col:'#C0392B', label:'Data Center' },
+      { key:'mesh',   col:'#1D4E8F', label:'Mesh Node' },
+    ],
+    layerCol: '#2D6A4F',
+  },
+  extract: {
+    badge: { text:'02 / Extraction', col:'#C0392B' },
+    step:    'Scene 02 of 03',
+    heading: 'What runs underneath',
+    body:    'The same street. Nothing has changed physically. But now you can see what was always operating - surveillance flows, behavioral risk scores, data sold to advertisers, ghost labor hidden inside the phrase "artificial intelligence." This is the city as government and corporate actors see it.',
+    quotes: [
+      { text: '"Many forms of work are shrouded in the term artificial intelligence, hiding the fact that people are performing rote tasks."', src: 'Crawford, Atlas of AI, 2021' },
+      { text: '"Big data systems let police watch far more people, but not equally."',                                                         src: 'Brayne, Big Data Surveillance, 2017' },
+      { text: '"Tech fixes often hide, speed up, and even deepen discrimination while appearing neutral."',                                    src: 'Benjamin, Race After Technology, 2019' },
+    ],
+    instructions: [
+      { icon: '&#128247;', label: 'Look at the cameras',     body: 'Click any camera. Read what it collects, who it reports to, what it infers.' },
+      { icon: '&#128100;', label: 'Click a pedestrian',      body: 'The same person from Layer 01 now has a risk score, a consumer profile, a subject number.' },
+      { icon: '&#9632;',   label: 'Visit the data center',   body: 'The windowless box south-west. Click it to read what it actually contains.' },
+    ],
+    locations: [
+      { key:'server', col:'#C0392B', label:'Data Center / "The Mouth"' },
+      { key:'mesh',   col:'#1D4E8F', label:'Network Node' },
+      { key:'start',  col:'#888888', label:'Main Street' },
+    ],
+    layerCol: '#C0392B',
+  },
+  proposal: {
+    badge: { text:'03 / Proposal', col:'#1D4E8F' },
+    step:    'Scene 03 of 03',
+    heading: 'The Maintenance City',
+    body:    'The same physical infrastructure, redesigned. The data center has a public-facing wall showing its cooling systems and energy draw. Cameras carry plaques crediting their maintainers. The mesh node is in a window-facing room residents can see into. The city is legible. That changes everything.',
+    quotes: [
+      { text: '"Community mesh requires fostering relationships of trust and cooperation among neighbors."',   src: 'Byrum, Building the People\'s Internet, 2019' },
+      { text: '"Affordances and disaffordances are never equally available to all."',                         src: 'Costanza-Chock, Design Justice, 2020' },
+      { text: '"Actual citizens remain largely excluded from participating in decision-making processes."',   src: 'Shelton & Lodato, Actually Existing Smart Citizens, 2019' },
+    ],
+    instructions: [
+      { icon: '&#128196;', label: 'Read the plaques',           body: 'Blue markers appear on infrastructure. Click them to read who maintains, governs, and is accountable.' },
+      { icon: '&#128308;', label: 'Find the opt-out corner',    body: 'Green beacon at coords (26, 26) - use the Go to location button below or look for the green ring.' },
+      { icon: '&#9989;',   label: 'Open the community server',  body: 'Click the mesh node near the blue beacon. The internet, for this block, is something you can point to.' },
+    ],
+    locations: [
+      { key:'optout', col:'#2D6A4F', label:'Opt-Out Corner' },
+      { key:'server', col:'#1D4E8F', label:'Transparent Data Center' },
+      { key:'mesh',   col:'#1D4E8F', label:'Community Server Room' },
+    ],
+    layerCol: '#1D4E8F',
+  },
+};
+
+// ================================================================
+// HOTSPOT DATA (per object type, per layer)
+// ================================================================
+var HD = {
+  camera: {
+    surface:  { src:'Citizen View',                        lbl:'Street Safety Camera',                   desc:'Public safety monitoring. Footage retained 48 hours. It looks like care. You do not ask what else it does.',                                                                                                                                           quote:'' },
+    extract:  { src:'Browne, 2015 + Brayne, 2017',         lbl:'Surveillance Node #C-19',                 desc:'Facial recognition active. Linked to 3 other nodes. Risk score processing. Gait pattern catalogued. This camera is not only watching - it is classifying. Race, age, and behavioral deviation are being inferred right now.',                         quote:'"These systems grow out of long histories of Black surveillance. They cannot be understood as postracial technologies." - Browne' },
+    proposal: { src:'Crawford + Community Governance',     lbl:'Camera - Maintained by J. Torres',        desc:'Last serviced: March 14. Data retained: 48 hours. Facial recognition: INACTIVE - disabled by Block 7 Resident Assembly vote, Feb 2031. This plaque is load-bearing. Without it, the camera is a black box. With it, it is a civic object.',          quote:'"Critical biometric consciousness means staying aware of how race, power, and history shape design and use." - Browne' },
+  },
+  dataCenter: {
+    surface:  { src:'Citizen View',                        lbl:'Cloud Infrastructure Hub',                desc:'The internet lives somewhere. You use it every day. This is where. From the street, it looks like a warehouse. No signage. No window. No indication of what it consumes.',                                                                            quote:'' },
+    extract:  { src:'Monserrate, 2022 + Crawford, 2021',   lbl:'"The Mouth" - Data Processing Facility',  desc:'Energy draw: 28 MW. Water use: 3.2 million gallons per month, from an aquifer already stressed by historic drought. Workers inside are called technicians. The data labelers and content moderators who make the AI function are not on any org chart.', quote:'"Data centers are carbonivores. Cooling alone consumes over 40% of their electricity." - Monserrate' },
+    proposal: { src:'Holt & Vonderau + Community Charter', lbl:'Mesa District Infrastructure Hub',        desc:'A glass and open-grate facade reveals the cooling systems inside. A live display at street level shows real-time energy draw: 28 MW, water use: 3.2M gal/mo, carbon offset status. A bench in front. Worker credits posted by the entrance door.',     quote:'"Many operations will remain hidden, locked away, blackboxed." - Holt & Vonderau (what this facade refuses)' },
+  },
+  meshNode: {
+    surface:  { src:'Citizen View',                        lbl:'Wireless Access Point',                   desc:'Free public Wi-Fi. Signal strong. You do not ask who owns the hardware, who logs the traffic, or what the governance structure is. It just works.',                                                                                                   quote:'' },
+    extract:  { src:'Holt & Vonderau, 2015',               lbl:'Network Monitoring Node',                 desc:'Traffic logged. Metadata retained indefinitely. ISP cooperation agreement active. Device fingerprinting enabled. The free Wi-Fi is not free. You are paying in data.',                                                                                quote:'"The first rule of data centers is do not talk about data centers." - Holt & Vonderau' },
+    proposal: { src:'Byrum, 2019',                         lbl:"People's Internet Node - Block 7",        desc:'Community-owned. No traffic logging. Governed by a resident assembly that meets the second Tuesday of every month. Uptime log posted in the window. Energy use reported quarterly to the neighborhood association.',                                   quote:'"Community mesh requires fostering relationships of trust and cooperation among neighbors." - Byrum' },
+  },
+  pedestrian: {
+    surface:  { src:'Citizen View',                        lbl:'Pedestrian',                              desc:'A person moving through the city. Their experience: smooth, unremarkable, efficient. They cannot see the layers underneath.',                                                                                                                         quote:'' },
+    extract:  { src:'Brayne, 2017 + Benjamin, 2019',       lbl:'Subject #P-3847',                         desc:'Gait pattern: catalogued. Route: habitual. Flagged for deviation from baseline - 3 days ago. Consumer profile active: income bracket estimated, purchase intent HIGH, 3 ads queued. This person has a number, a score, and a price per minute.',      quote:'"Tech fixes often hide, speed up, and even deepen discrimination while appearing neutral or benevolent." - Benjamin, New Jim Code' },
+    proposal: { src:'Shelton & Lodato + Costanza-Chock',   lbl:'Resident',                                desc:'Has reviewed and set their own data terms through the Block 7 Data Charter. Location precision: neighborhood only. Movement history: 7 days. Behavioral sharing: off. Opted into the neighborhood data dividend: $38 this quarter.',                   quote:'"Affordances and disaffordances are never equally available to all." - Costanza-Chock' },
+  },
+  trafficLight: {
+    surface:  { src:'Citizen View',                        lbl:'Adaptive Traffic Signal',                 desc:'Wait time reduced 40%. Adaptive signals responding to real-time pedestrian flow. It works. You do not think about what else the sensor at its base is counting.',                                                                                     quote:'' },
+    extract:  { src:'Brayne, 2017',                        lbl:'Sensor Node #T-447',                      desc:'Pedestrian counter active. Behavioral anomaly detection: enabled. 847 crossings logged today. Gait patterns cross-referenced with risk database. The signal is also a data collection point. The two functions are inseparable and one is invisible.',  quote:'"Risk scores and predictive policing tools intensify monitoring of those already under suspicion." - Brayne' },
+    proposal: { src:'Winner, 1980 + Block 7 Assembly',     lbl:'Signal - Sensor Data: Public Record',     desc:'Adaptive timing active. Sensor data: publicly logged, retained 14 days, readable at city.block7.net/sensors/T-447. Facial recognition: not installed - community vote, Nov 2030. The signal does the same job. It just does it honestly.',            quote:'"Technologies embody specific forms of power and authority. The design of a thing encodes a set of values." - Winner' },
+  },
+  server: {
+    surface:  { src:'Citizen View',                        lbl:'Smart City Server Stack',                 desc:'The backbone of city services. Efficient. Invisible. It just works. The workers who maintain it are not visible from here, or from anywhere.',                                                                                                        quote:'' },
+    extract:  { src:'Crawford, Atlas of AI, 2021',         lbl:'AI Infrastructure - Ghost Labor Active',  desc:'2,400 data labelers are processing flagged pedestrian clips from this district tonight. They are paid per task. They are not employees. They do not appear in the system\'s public descriptions. Hidden inside "artificial intelligence."',           quote:'"Many forms of work are shrouded in the term artificial intelligence." - Crawford' },
+    proposal: { src:'Crawford + Maintenance City Charter', lbl:'Infrastructure - Worker Credits Posted',  desc:'Maintained by: Ramos Facilities Cooperative. Lead technician: D. Washington. Last full service: March 2031. Labor contract: publicly posted at entrance. The labor making the system run is visible in the built environment that houses it.',         quote:'"The anatomy of AI: the mining, the labor, the energy, the water - all of it must be made visible." - Crawford' },
+  },
+  bus: {
+    surface:  { src:'Citizen View',                        lbl:'Public Transit - Route 47',               desc:'Arrives on time. Route optimized. The system appears to serve everyone equally. This is the surface.',                                                                                                                                               quote:'' },
+    extract:  { src:'Winner, 1980',                        lbl:'Route 47 - Profitability Score: LOW',     desc:'Passenger load tracked. Route profitability score: 0.31. Flagged for potential service reduction. The residents of this block use this route to get to work. The algorithm does not know that. Or it does, and it does not care.',                    quote:'"Technologies build order in our world. That order reflects whose priorities were encoded at the start." - Winner' },
+    proposal: { src:'Winner + Costanza-Chock',             lbl:'Route 47 - Community Protected',          desc:'This route was flagged for elimination in 2029. Block 7 residents submitted formal contestation through the Transit Data Review Board. The route was kept. The data that saved it is posted at the stop.',                                          quote:'"Design justice means centering the voices of those most impacted by design decisions." - Costanza-Chock' },
+  },
+  building: {
+    surface:  { src:'Citizen View',                        lbl:'Smart Building',                          desc:'Energy optimized. Climate controlled. Occupancy sensors active. The building is efficient. You do not think about what it knows about you or who it reports to.',                                                                                     quote:'' },
+    extract:  { src:'Mattern, 2021 + Crawford, 2021',      lbl:'High-Density Data Zone',                  desc:'Occupancy patterns logged. HVAC data sold to energy futures traders. Facial recognition at the entrance cross-referenced with the risk database. Every sensor in this building is a data point in a system no resident can see or contest.',         quote:'"The city-as-computer model narrows urban intelligence to what can be sensed, computed, and optimized." - Mattern' },
+    proposal: { src:'Costanza-Chock + Byrum',              lbl:'Community-Governed Block',                desc:'Sensor data retained 14 days, published monthly to the block data commons. Energy use posted in the lobby. Maintenance log public. Workers credited by name on the building directory. The building still does everything it did. Just honestly.',     quote:'"Design justice means centering the voices of those most impacted by design decisions." - Costanza-Chock' },
+  },
+  billboard: {
+    surface:  { src:'Citizen View',                        lbl:'Digital Billboard',                       desc:'Relevant ads. Almost eerily on-point. You searched for this two days ago. The system appears to know you.',                                                                                                                                          quote:'' },
+    extract:  { src:'Noble, 2018 + Browne, 2015',          lbl:'Targeted Impression Node - 14 Bidders',   desc:'Biometric inference active: age estimated, gender inferred, race inferred - 0.78 confidence. Ad auction completed in 80ms. For women of color passing this point, the ad pool is different. The billboard is not neutral. It never was.',          quote:'"Sexism and pornography become the dominant values online when it comes to women of color." - Noble' },
+    proposal: { src:'Noble + Community Assembly',          lbl:'Community Notice Board',                  desc:'Billboard repurposed by Block 7 resolution, Jan 2031. No tracking. No biometric inference. Current display: neighborhood assembly agenda, mutual aid roster, Route 47 ridership data. The city communicating with residents instead of extracting.', quote:'' },
+  },
+};
+
+// ================================================================
+// WAYPOINTS
+// ================================================================
+var WAYPOINTS = {
+  optout: { x:26,  z:26,  label:'Opt-Out Corner',         col:'#2D6A4F', desc:'Block 7 voted to remove all sensors here' },
+  server: { x:-55, z:-48, label:'Data Center',             col:'#C0392B', desc:'The windowless box - click in each layer' },
+  mesh:   { x:14,  z:9,   label:'Community Mesh Node',     col:'#1D4E8F', desc:'Click in Layer 03 to open community server room' },
+  start:  { x:0,   z:10,  label:'Main Intersection',       col:'#888888', desc:'The central block' },
+};
+
+function teleport(key) {
+  var wp = WAYPOINTS[key];
+  if (!wp || !cam) return;
+  cam.position.x = wp.x;
+  cam.position.z = wp.z;
+  cam.position.y = 2.2;
+  camYaw = 0;
+  var toast = document.getElementById('waypoint-toast');
+  document.getElementById('wt-dot').style.background = wp.col;
+  document.getElementById('wt-text').innerHTML = '<strong>' + wp.label + '</strong> - ' + wp.desc;
+  toast.classList.add('on');
+  clearTimeout(toast._h);
+  toast._h = setTimeout(function() { toast.classList.remove('on'); }, 3000);
+}
+
+// ================================================================
+// THREE.JS STATE
+// ================================================================
+var entered      = false;
+var currentLayer = 'surface';
+var scene, cam, renderer, clock;
+var objects      = [];
+var allMeshes    = [];
+var keys         = {};
+var mouseDown    = false;
+var _dragMoved   = false;
+var lastMX = 0, lastMY = 0;
+var camYaw = 0, camPitch = -0.15;
+var ray, mVec;
+
+var LV = {
+  surface:  { fog:0xEEEDE8, fogD:0.006, amb:0xDDDDD5, ambI:0.9,  bld:0xCCCCC5, ble:0x000000, bleI:0,   sky:0xF0EFE9 },
+  extract:  { fog:0x1A0A08, fogD:0.009, amb:0x3A1810, ambI:0.6,  bld:0x281408, ble:0x400800, bleI:0.3,  sky:0x100504 },
+  proposal: { fog:0xD8E4F0, fogD:0.006, amb:0xC8D8F0, ambI:0.85, bld:0xBED0E8, ble:0x001830, bleI:0.1,  sky:0xE8EFF8 },
+};
+
+// ================================================================
+// NARRATIVE RENDERER
+// ================================================================
+function renderNarrative(l) {
+  var n  = NARRATIVES[l];
+  var el = document.getElementById('narrative');
+
+  var quotesHTML = n.quotes.map(function(q) {
+    return '<div class="narr-quote">'
+         + '<div class="narr-quote-text">' + q.text + '</div>'
+         + '<div class="narr-quote-src">'  + q.src  + '</div>'
+         + '</div>';
+  }).join('');
+
+  var instrHTML = n.instructions.map(function(i) {
+    return '<div class="narr-instruction">'
+         + '<div class="narr-instruction-icon">' + i.icon + '</div>'
+         + '<div class="narr-instruction-text"><strong>' + i.label + '</strong>' + i.body + '</div>'
+         + '</div>';
+  }).join('');
+
+  var locHTML = '';
+  if (n.locations && n.locations.length) {
+    var btns = n.locations.map(function(loc) {
+      return '<button class="narr-location-btn" onclick="teleport(\'' + loc.key + '\')">'
+           + '<span class="loc-dot" style="background:' + loc.col + '"></span>'
+           + loc.label
+           + '</button>';
+    }).join('');
+    locHTML = '<div class="narr-divider"></div>'
+            + '<div style="font-family:var(--mono);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:.45rem">Go to location</div>'
+            + '<div>' + btns + '</div>';
+  }
+
+  el.innerHTML =
+    '<div class="narr-layer-badge" style="color:' + n.badge.col + ';border-color:' + n.badge.col + '">' + n.badge.text + '</div>'
+  + '<div><div class="narr-step">' + n.step + '</div><div class="narr-heading">' + n.heading + '</div></div>'
+  + '<div class="narr-body">' + n.body + '</div>'
+  + '<div class="narr-divider"></div>'
+  + quotesHTML
+  + '<div class="narr-divider"></div>'
+  + instrHTML
+  + locHTML
+  + '<div class="narr-divider"></div>'
+  + '<div class="narr-obj-card" id="objcard">'
+  +   '<div class="obj-card-header">'
+  +     '<span class="obj-card-src" id="oc-src"></span>'
+  +     '<button class="obj-card-close" onclick="closeCard()">&#10005;</button>'
+  +   '</div>'
+  +   '<div class="obj-card-body">'
+  +     '<div class="obj-card-label" id="oc-lbl"></div>'
+  +     '<div class="obj-card-desc"  id="oc-desc"></div>'
+  +     '<div class="obj-card-quote" id="oc-quote"></div>'
+  +   '</div>'
+  + '</div>';
+
+  document.querySelectorAll('.ltab').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.l === l);
+  });
+
+  var stepNums = { surface:1, extract:2, proposal:3 };
+  var pcts     = { surface:33, extract:66, proposal:100 };
+  document.getElementById('stepctr').textContent = 'Layer ' + stepNums[l] + ' of 3';
+  document.getElementById('pct').textContent     = pcts[l] + '%';
+  document.getElementById('pfill').style.width   = pcts[l] + '%';
+  document.getElementById('tblayer').textContent = 'Layer 0' + stepNums[l] + ' - ' + n.heading;
+}
+
+// ================================================================
+// OBJECT CARD
+// ================================================================
+function showCard(hk) {
+  var data = HD[hk] ? HD[hk][currentLayer] : null;
+  if (!data) return;
+  var card = document.getElementById('objcard');
+  if (!card) return;
+  document.getElementById('oc-src').textContent  = data.src;
+  document.getElementById('oc-src').style.color  = NARRATIVES[currentLayer].layerCol;
+  document.getElementById('oc-lbl').textContent  = data.lbl;
+  document.getElementById('oc-desc').textContent = data.desc;
+  var qt = document.getElementById('oc-quote');
+  if (data.quote) { qt.textContent = data.quote; qt.classList.add('on'); }
+  else            { qt.textContent = '';          qt.classList.remove('on'); }
+  card.classList.add('on');
+  setTimeout(function() {
+    card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 60);
+}
+
+function closeCard() {
+  var card = document.getElementById('objcard');
+  if (card) card.classList.remove('on');
+}
+
+// ================================================================
+// LAYER SWITCHING
+// ================================================================
+function setLayer(l) {
+  if (l === currentLayer && entered) return;
+  currentLayer = l;
+  var fl = document.getElementById('ltrans');
+  fl.classList.add('f');
+  setTimeout(function() { fl.classList.remove('f'); }, 280);
+  renderNarrative(l);
+  if (entered) applyLayerVisuals(l);
+}
+
+function applyLayerVisuals(l) {
+  var v = LV[l];
+  if (scene.fog) { scene.fog.color.set(v.fog); scene.fog.density = v.fogD; }
+  var amb = scene.getObjectByName('amb');
+  if (amb) { amb.color.set(v.amb); amb.intensity = v.ambI; }
+  renderer.setClearColor(v.sky, 1);
+
+  objects.forEach(function(obj) {
+    var type = obj.userData.type;
+
+    obj.traverse(function(c) {
+      if (!c.isMesh) return;
+      var mat = c.material;
+      if ((type === 'building' || type === 'dataCenter' || type === 'server')
+          && mat.roughness !== undefined && mat.roughness > 0.3) {
+        mat.color.set(v.bld);
+        if (mat.emissive) { mat.emissive.set(v.ble); mat.emissiveIntensity = v.bleI; }
+      }
+    });
+
+    if (obj.userData.lightMat) {
+      obj.userData.lightMat.color.set(
+        l === 'extract'  ? 0xE74C3C :
+        l === 'proposal' ? 0x1D6ECC : 0x4CAF80
+      );
+    }
+    if (obj.userData.ledMat) {
+      obj.userData.ledMat.color.set(l === 'extract' ? 0xFF2200 : 0x111111);
+    }
+    if (obj.userData.screenMat) {
+      obj.userData.screenMat.color.set(
+        l === 'extract'  ? 0x1a0505 :
+        l === 'proposal' ? 0x0a1a30 : 0x0a1830
+      );
+    }
+    if (obj.userData.plaqueMesh)  obj.userData.plaqueMesh.visible  = (l === 'proposal');
+    if (obj.userData.glassMesh)   obj.userData.glassMesh.visible   = (l === 'proposal');
+    if (obj.userData.solidWall)   obj.userData.solidWall.visible   = (l !== 'proposal');
+    if (obj.userData.extractGlow) obj.userData.extractGlow.visible = (l === 'extract');
+  });
+}
+
+// ================================================================
+// ENTER
+// ================================================================
+document.getElementById('enterbtn').addEventListener('click', function() {
+  if (entered) return;
+  entered = true;
+  document.getElementById('intro').classList.add('gone');
+  initThree();
+  setTimeout(function() {
+    document.getElementById('nav').classList.add('on');
+    document.getElementById('topbar').classList.add('on');
+    document.getElementById('xhair').classList.add('on');
+    document.getElementById('minimap').classList.add('on');
+    document.getElementById('cur').classList.add('active');
+    document.getElementById('c').classList.add('active');
+    initMinimap();
+  }, 400);
+  renderNarrative('surface');
+});
+
+// ================================================================
+// THREE.JS INIT
+// ================================================================
+function initThree() {
+  scene    = new THREE.Scene();
+  clock    = new THREE.Clock();
+  ray      = new THREE.Raycaster();
+  mVec     = new THREE.Vector2();
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, canvas:document.getElementById('c'), alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  resizeRenderer();
+  renderer.shadowMap.enabled    = true;
+  renderer.shadowMap.type       = THREE.PCFSoftShadowMap;
+  renderer.toneMapping          = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure  = 1.2;
+  renderer.setClearColor(0xF0EFE9, 1);
+
+  cam = new THREE.PerspectiveCamera(70, canvasAspect(), 0.1, 500);
+  cam.position.set(0, 2.2, 14);
+
+  buildCity();
+  applyLayerVisuals('surface');
+  loop(0);
+
+  window.addEventListener('resize', function() {
+    resizeRenderer();
+    cam.aspect = canvasAspect();
+    cam.updateProjectionMatrix();
+  });
+
+  window.addEventListener('keydown', function(e) {
+    keys[e.code] = true;
+    var moveKeys = ['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+    if (moveKeys.indexOf(e.code) > -1) e.preventDefault();
+  });
+  window.addEventListener('keyup', function(e) { keys[e.code] = false; });
+
+  window.addEventListener('mousemove', function(e) {
+    var cur = document.getElementById('cur');
+    cur.style.left = e.clientX + 'px';
+    cur.style.top  = e.clientY + 'px';
+
+    if (mouseDown && e.clientX > 340) {
+      var dx = e.clientX - lastMX;
+      var dy = e.clientY - lastMY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) _dragMoved = true;
+      camYaw   -= dx * 0.003;
+      camPitch -= dy * 0.003;
+      camPitch  = Math.max(-1.0, Math.min(0.5, camPitch));
+    }
+    lastMX = e.clientX;
+    lastMY = e.clientY;
+
+    if (e.clientX > 340) {
+      mVec.x = ((e.clientX - 340) / (window.innerWidth - 340)) * 2 - 1;
+      mVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      ray.setFromCamera(mVec, cam);
+      var hits = ray.intersectObjects(allMeshes, false);
+      cur.classList.toggle('hover', hits.length > 0);
+    } else {
+      cur.classList.remove('hover');
+    }
+  });
+
+  window.addEventListener('mousedown', function(e) {
+    if (e.clientX > 340) { mouseDown = true; _dragMoved = false; }
+    lastMX = e.clientX;
+    lastMY = e.clientY;
+  });
+  window.addEventListener('mouseup', function() { mouseDown = false; });
+
+  // pointerup is more reliable than click on trackpads
+  document.getElementById('c').addEventListener('pointerup', function(e) {
+    if (_dragMoved) return;
+    mVec.x = ((e.clientX - 340) / (window.innerWidth - 340)) * 2 - 1;
+    mVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    ray.setFromCamera(mVec, cam);
+    var hits = ray.intersectObjects(allMeshes, false);
+    if (!hits.length) { closeCard(); return; }
+    var obj = hits[0].object;
+    while (obj && !obj.userData.hk) obj = obj.parent;
+    if (!obj || !obj.userData.hk)   { closeCard(); return; }
+    showCard(obj.userData.hk);
+  });
+}
+
+function canvasAspect()  { return (window.innerWidth - 340) / window.innerHeight; }
+function resizeRenderer() { if (renderer) renderer.setSize(window.innerWidth - 340, window.innerHeight); }
+
+// ================================================================
+// BUILD CITY
+// ================================================================
+function spawnObj(type, hk, x, z, buildFn) {
+  var g = buildFn();
+  g.position.set(x, 0, z);
+  g.userData.type = type;
+  g.userData.hk   = hk;
+  scene.add(g);
+  objects.push(g);
+  g.traverse(function(c) {
+    if (c.isMesh) { c.userData.parentObj = g; allMeshes.push(c); }
+  });
+}
+
+function buildCity() {
+  // Ground
+  var gnd = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300),
+    new THREE.MeshStandardMaterial({ color:0xDEDDD8, roughness:0.95 })
+  );
+  gnd.rotation.x = -(Math.PI / 2);
+  gnd.receiveShadow = true;
+  scene.add(gnd);
+
+  // Grid
+  var grid = new THREE.GridHelper(300, 60, 0xCCCCC5, 0xD8D8D2);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+  // Roads
+  var roadMat = new THREE.MeshStandardMaterial({ color:0xBEBEB8, roughness:0.98 });
+  [[300,8,0,0],[8,300,0,0],[300,5,0,26],[300,5,0,-26],[5,300,26,0],[5,300,-26,0],
+   [300,4,0,52],[4,300,52,0],[300,4,0,-52],[4,300,-52,0]].forEach(function(r) {
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(r[0], r[1]), roadMat.clone());
+    m.rotation.x = -(Math.PI / 2);
+    m.position.set(r[2], 0.02, r[3]);
+    m.receiveShadow = true;
+    scene.add(m);
+  });
+
+  // Lighting
+  var amb = new THREE.AmbientLight(0xDDDDD5, 0.9);
+  amb.name = 'amb';
+  scene.add(amb);
+
+  var dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(40, 80, 40);
+  dir.castShadow = true;
+  dir.shadow.mapSize.width  = 2048;
+  dir.shadow.mapSize.height = 2048;
+  dir.shadow.camera.left   = -80; dir.shadow.camera.right = 80;
+  dir.shadow.camera.top    =  80; dir.shadow.camera.bottom = -80;
+  dir.shadow.camera.far    = 250;
+  scene.add(dir);
+
+  scene.fog = new THREE.FogExp2(0xEEEDE8, 0.006);
+
+  // ---- BUILDINGS ----
+  var bldgDefs = [
+    [-35,-35,12,28,12,'box'], [-36,-36,6,44,6,'tower'],
+    [ 35,-35,14,22,10,'box'], [ 36,-36,5,38,5,'tower'],
+    [-35, 35,10,18,10,'box'], [-34, 35,5,30,5,'tower'],
+    [ 35, 35,13,26,11,'box'], [ 36, 34,6,42,6,'tower'],
+    [-12,-35, 9,32, 9,'box'], [ 12,-35,8,20,8,'box'],
+    [-12, 35,10,24, 9,'box'], [ 12, 35,7,16,7,'box'],
+    [-35,-12, 9,15, 8,'flat'],[-35, 12,8,22,9,'box'],
+    [ 35,-12,10,18, 9,'box'], [ 35, 12,8,28,8,'box'],
+    [-55,  0,14,10,12,'flat'],[ 55,  0,12,14,12,'flat'],
+    [  0,-55,16,12,12,'flat'],[  0, 55,12,10,14,'flat'],
+    [-55,-35, 9,12, 9,'box'], [ 55,-35,8,16, 8,'box'],
+    [-55, 35,10,14,10,'box'], [ 55, 35,9,20, 9,'box'],
+  ];
+
+  bldgDefs.forEach(function(b) {
+    var x=b[0], z=b[1], w=b[2], h=b[3], d=b[4], shape=b[5];
+    var g   = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color:0xCCCCC5, roughness:0.8, metalness:0.1 });
+    g.position.set(x, 0, z);
+
+    if (shape === 'tower') {
+      var tw = w * 0.5, td = d * 0.5;
+      var body = new THREE.Mesh(new THREE.BoxGeometry(tw, h, td), mat.clone());
+      body.position.y = h / 2; body.castShadow = true; g.add(body);
+      var cap = new THREE.Mesh(new THREE.BoxGeometry(tw * 0.7, 2.5, td * 0.7), mat.clone());
+      cap.position.y = h + 1.25; g.add(cap);
+    } else if (shape === 'flat') {
+      var fh = h * 0.35;
+      var base = new THREE.Mesh(new THREE.BoxGeometry(w * 1.5, fh, d * 1.5), mat.clone());
+      base.position.y = fh / 2; base.castShadow = true; g.add(base);
+      var top2 = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, h * 0.55, d * 0.7), mat.clone());
+      top2.position.y = fh + (h * 0.55) / 2; top2.castShadow = true; g.add(top2);
+    } else {
+      var box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat.clone());
+      box.position.y = h / 2; box.castShadow = true; g.add(box);
+      for (var f = 0; f < Math.floor(h / 3.5); f++) {
+        var wm = new THREE.Mesh(
+          new THREE.PlaneGeometry(w * 0.72, 0.18),
+          new THREE.MeshBasicMaterial({ color:0xBBBBB4 })
+        );
+        wm.position.set(0, f * 3.5 + 1.5, d / 2 + 0.01);
+        g.add(wm);
+      }
+    }
+
+    g.userData.type = 'building';
+    g.userData.hk   = 'building';
+    scene.add(g);
+    objects.push(g);
+    g.traverse(function(c) {
+      if (c.isMesh) { c.userData.parentObj = g; allMeshes.push(c); }
+    });
+  });
+
+  // ---- DATA CENTER ----
+  spawnObj('dataCenter', 'dataCenter', -55, -55, function() {
+    var g       = new THREE.Group();
+    var solidM  = new THREE.MeshStandardMaterial({ color:0xBBBBB4, roughness:0.92, metalness:0.2 });
+    var solid   = new THREE.Mesh(new THREE.BoxGeometry(22, 4.5, 15), solidM);
+    solid.position.y = 2.25; solid.castShadow = true; g.add(solid);
+    g.userData.solidWall = solid;
+
+    var glassM  = new THREE.MeshStandardMaterial({ color:0x9BB8D8, roughness:0.1, metalness:0.3, transparent:true, opacity:0.55 });
+    var glass   = new THREE.Mesh(new THREE.PlaneGeometry(22, 4.5), glassM);
+    glass.position.set(0, 2.25, 7.51); glass.visible = false; g.add(glass);
+    g.userData.glassMesh = glass;
+
+    for (var i = -2; i <= 2; i++) {
+      var cu = new THREE.Mesh(
+        new THREE.BoxGeometry(2.5, 1.2, 2),
+        new THREE.MeshStandardMaterial({ color:0xAAAAAA, roughness:0.85, metalness:0.4 })
+      );
+      cu.position.set(i * 3, 4.5 + 0.6, 0); g.add(cu);
+    }
+
+    var dispM = new THREE.MeshBasicMaterial({ color:0x1D4E8F });
+    var disp  = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.8), dispM);
+    disp.position.set(-6, 1.2, 7.52); disp.visible = false; g.add(disp);
+    g.userData.plaqueMesh = disp;
+
+    var glowM = new THREE.MeshBasicMaterial({ color:0xFF2200, transparent:true, opacity:0.08 });
+    var glow  = new THREE.Mesh(new THREE.BoxGeometry(22.5, 4.8, 15.5), glowM);
+    glow.position.y = 2.25; glow.visible = false; g.add(glow);
+    g.userData.extractGlow = glow;
+    return g;
+  });
+
+  // ---- SERVER STACKS ----
+  spawnObj('server', 'server', 20, -55, function() {
+    var g = new THREE.Group();
+    for (var row = 0; row < 3; row++) {
+      for (var col = 0; col < 4; col++) {
+        var rack = new THREE.Mesh(
+          new THREE.BoxGeometry(1.1, 5, 0.75),
+          new THREE.MeshStandardMaterial({ color:0xAAAAAA, roughness:0.6, metalness:0.6 })
+        );
+        rack.position.set(col * 1.5 - 2.25, 2.5, row * 1.1 - 1.1);
+        rack.castShadow = true; g.add(rack);
+      }
+    }
+    var gl = new THREE.Mesh(new THREE.BoxGeometry(8, 5.5, 5), new THREE.MeshBasicMaterial({ color:0xFF4400, transparent:true, opacity:0.06 }));
+    gl.position.set(0, 2.5, 0); gl.visible = false; g.add(gl);
+    g.userData.extractGlow = gl;
+
+    var pl = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.8), new THREE.MeshBasicMaterial({ color:0x1D4E8F }));
+    pl.position.set(0, 0.3, 0.5); pl.visible = false; g.add(pl);
+    g.userData.plaqueMesh = pl;
+    return g;
+  });
+
+  // ---- MESH NODES ----
+  [[-14,-14],[14,-14],[-14,14],[14,14],[-34,0],[34,0],[0,-34],[0,34]].forEach(function(p) {
+    spawnObj('meshNode', 'meshNode', p[0], p[1], function() {
+      var g    = new THREE.Group();
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.08,4,8), new THREE.MeshStandardMaterial({ color:0xAAAAAA, roughness:0.9 }));
+      pole.position.y = 2; g.add(pole);
+      var dish = new THREE.Mesh(new THREE.SphereGeometry(0.3,8,5,0,Math.PI*2,0,Math.PI/2), new THREE.MeshStandardMaterial({ color:0x999999, roughness:0.5, metalness:0.5 }));
+      dish.position.y = 4.1; dish.rotation.x = Math.PI; g.add(dish);
+      var glow = new THREE.Mesh(new THREE.SphereGeometry(0.09,6,6), new THREE.MeshBasicMaterial({ color:0x4CAF80 }));
+      glow.position.y = 4.5; g.add(glow);
+      g.userData.glowM = glow;
+      var frame = new THREE.Mesh(new THREE.BoxGeometry(1.2,1,0.08), new THREE.MeshBasicMaterial({ color:0x1D4E8F, transparent:true, opacity:0.6 }));
+      frame.position.set(0, 1.5, 0.5); frame.visible = false; g.add(frame);
+      g.userData.plaqueMesh = frame;
+      return g;
+    });
+  });
+
+  // ---- CAMERAS ----
+  [[-25,-25],[25,-25],[-25,25],[25,25],[-44,0],[44,0],[0,-44],[0,44],[-14,-44],[14,-44]].forEach(function(p) {
+    spawnObj('camera', 'camera', p[0], p[1], function() {
+      var g    = new THREE.Group();
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,5,6), new THREE.MeshStandardMaterial({ color:0x999999, roughness:0.9 }));
+      pole.position.y = 2.5; g.add(pole);
+      var arm  = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.08,0.08), new THREE.MeshStandardMaterial({ color:0x888888 }));
+      arm.position.set(0.6, 5.1, 0); g.add(arm);
+      var body = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.22,0.35), new THREE.MeshStandardMaterial({ color:0x777777, roughness:0.4, metalness:0.5 }));
+      body.position.set(1.2, 5.1, 0); body.rotation.x = -0.25; g.add(body);
+      var lens = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.1,0.22,8), new THREE.MeshBasicMaterial({ color:0x222222 }));
+      lens.position.set(1.2, 5.1, 0.28); lens.rotation.x = Math.PI / 2; g.add(lens);
+      var ledM = new THREE.Mesh(new THREE.SphereGeometry(0.04,6,6), new THREE.MeshBasicMaterial({ color:0x111111 }));
+      ledM.position.set(1.4, 5.22, 0.1); g.add(ledM);
+      g.userData.ledMat = ledM.material;
+      var cone = new THREE.Mesh(new THREE.ConeGeometry(0.05,0.3,6), new THREE.MeshBasicMaterial({ color:0xFF2200, transparent:true, opacity:0.7 }));
+      cone.position.set(1.2, 5.1, 0.35); cone.rotation.x = Math.PI / 2; cone.visible = false; g.add(cone);
+      g.userData.extractGlow = cone;
+      var pl   = new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.2), new THREE.MeshBasicMaterial({ color:0x1D4E8F }));
+      pl.position.set(1.2, 4.5, 0.2); pl.visible = false; g.add(pl);
+      g.userData.plaqueMesh = pl;
+      return g;
+    });
+  });
+
+  // ---- TRAFFIC LIGHTS ----
+  [[-3,0],[3,0],[0,-3],[0,3],[0,26],[26,0],[-26,0],[0,-26]].forEach(function(p) {
+    spawnObj('trafficLight', 'trafficLight', p[0], p[1], function() {
+      var g    = new THREE.Group();
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,4.5,6), new THREE.MeshStandardMaterial({ color:0x888888, roughness:0.8 }));
+      pole.position.y = 2.25; g.add(pole);
+      var box  = new THREE.Mesh(new THREE.BoxGeometry(0.38,0.9,0.28), new THREE.MeshStandardMaterial({ color:0x666666, roughness:0.5 }));
+      box.position.y = 4.6; g.add(box);
+      var lmat = new THREE.MeshBasicMaterial({ color:0x4CAF80 });
+      var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6), lmat);
+      bulb.position.set(0, 4.5, 0.15); g.add(bulb);
+      g.userData.lightMat = lmat;
+      var gl   = new THREE.Mesh(new THREE.SphereGeometry(0.25,6,6), new THREE.MeshBasicMaterial({ color:0xFF4400, transparent:true, opacity:0.3 }));
+      gl.position.set(0, 4.5, 0.15); gl.visible = false; g.add(gl);
+      g.userData.extractGlow = gl;
+      var pl   = new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.18), new THREE.MeshBasicMaterial({ color:0x1D4E8F }));
+      pl.position.set(0, 3.8, 0.2); pl.visible = false; g.add(pl);
+      g.userData.plaqueMesh = pl;
+      return g;
+    });
+  });
+
+  // ---- PEDESTRIANS ----
+  [[-5,8],[7,-5],[-8,-3],[4,12],[10,8],[-10,4],[2,-12],[14,-3],[-4,4],[8,14]].forEach(function(p) {
+    spawnObj('pedestrian', 'pedestrian', p[0], p[1], function() {
+      var g    = new THREE.Group();
+      var body = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,1.1,8), new THREE.MeshStandardMaterial({ color:0xAAAAAA, roughness:0.9 }));
+      body.position.y = 0.75; g.add(body);
+      var head = new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8), new THREE.MeshStandardMaterial({ color:0x999999, roughness:0.8 }));
+      head.position.y = 1.56; g.add(head);
+      g.userData.ox   = p[0];
+      g.userData.oz   = p[1];
+      g.userData.woff = Math.random() * Math.PI * 2;
+      g.userData.wrad = 1.2 + Math.random() * 0.8;
+      var risk = new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6), new THREE.MeshBasicMaterial({ color:0xFF4400, transparent:true, opacity:0.8 }));
+      risk.position.set(0, 2.0, 0); risk.visible = false; g.add(risk);
+      g.userData.extractGlow = risk;
+      return g;
+    });
+  });
+
+  // ---- BUSES ----
+  [[-10,26],[10,26],[26,10],[26,-10]].forEach(function(p, i) {
+    spawnObj('bus', 'bus', p[0], p[1], function() {
+      var g    = new THREE.Group();
+      var body = new THREE.Mesh(new THREE.BoxGeometry(5,2.2,2), new THREE.MeshStandardMaterial({ color:0xBBBBB4, roughness:0.7, metalness:0.2 }));
+      body.position.y = 1.4; body.castShadow = true; g.add(body);
+      var roof = new THREE.Mesh(new THREE.BoxGeometry(5,0.25,2), new THREE.MeshStandardMaterial({ color:0xAAAAAA, roughness:0.8 }));
+      roof.position.y = 2.625; g.add(roof);
+      [-1.2,0,1.2].forEach(function(wx) {
+        var win = new THREE.Mesh(new THREE.PlaneGeometry(0.85,0.6), new THREE.MeshBasicMaterial({ color:0xC8D8E8, transparent:true, opacity:0.7 }));
+        win.position.set(wx, 1.5, 1.02); g.add(win);
+      });
+      g.userData.busOff = i * 1.5;
+      return g;
+    });
+  });
+
+  // ---- BILLBOARDS ----
+  [[-44,-18],[44,-18],[-44,18],[44,18]].forEach(function(p) {
+    spawnObj('billboard', 'billboard', p[0], p[1], function() {
+      var g    = new THREE.Group();
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,6,8), new THREE.MeshStandardMaterial({ color:0x999999 }));
+      pole.position.y = 3; g.add(pole);
+      var board = new THREE.Mesh(new THREE.BoxGeometry(6,3,0.2), new THREE.MeshStandardMaterial({ color:0x888888, roughness:0.4, metalness:0.4 }));
+      board.position.y = 7; g.add(board);
+      var scrM = new THREE.MeshBasicMaterial({ color:0x0a1830 });
+      var scr  = new THREE.Mesh(new THREE.PlaneGeometry(5.6,2.6), scrM);
+      scr.position.set(0, 7, 0.12); g.add(scr);
+      g.userData.screenMat = scrM;
+      var gl   = new THREE.Mesh(new THREE.BoxGeometry(6.2,3.2,0.4), new THREE.MeshBasicMaterial({ color:0xFF2200, transparent:true, opacity:0.1 }));
+      gl.position.set(0, 7, 0); gl.visible = false; g.add(gl);
+      g.userData.extractGlow = gl;
+      return g;
+    });
+  });
+
+  // ---- BEACONS ----
+  function addBeacon(x, z, col, key) {
+    var g    = new THREE.Group();
+    g.position.set(x, 0, z);
+    var beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.04, 18, 8),
+      new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.18 })
+    );
+    beam.position.y = 9; g.add(beam);
+    var ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.2, 0.06, 8, 24),
+      new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.6 })
+    );
+    ring.position.y = 16; ring.rotation.x = Math.PI / 2; g.add(ring);
+    var dot2 = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 0.08, 16),
+      new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.5 })
+    );
+    dot2.position.y = 0.04; g.add(dot2);
+    g.userData.isBeacon   = true;
+    g.userData.beaconKey  = key;
+    g.userData.beaconRing = ring;
+    scene.add(g);
+    objects.push(g);
+  }
+
+  addBeacon( 26,  26, 0x2D6A4F, 'optout');
+  addBeacon(-55, -55, 0xC0392B, 'server');
+  addBeacon( 14,  14, 0x1D4E8F, 'mesh');
+}
+
+// ================================================================
+// MINIMAP
+// ================================================================
+var mmCtx = null;
+
+function initMinimap() {
+  var mm   = document.getElementById('mm');
+  mm.width = 140; mm.height = 140;
+  mmCtx    = mm.getContext('2d');
+}
+
+function drawMinimap() {
+  if (!mmCtx || !cam) return;
+  var ctx = mmCtx;
+  var W   = 140, H = 140;
+  var sc  = W / 180;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#F6F6F4';
+  ctx.fillRect(0, 0, W, H);
+
+  // Roads
+  ctx.fillStyle = '#BEBEB8';
+  ctx.fillRect(0, H/2-3, W, 6);
+  ctx.fillRect(W/2-3, 0, 6, H);
+  [[0,H/2+26*sc-2,W,3],[0,H/2-26*sc-2,W,3],[W/2+26*sc-2,0,3,H],[W/2-26*sc-2,0,3,H]].forEach(function(r) {
+    ctx.fillRect(r[0], r[1], r[2], r[3]);
+  });
+
+  // Waypoints
+  Object.keys(WAYPOINTS).forEach(function(k) {
+    var wp = WAYPOINTS[k];
+    var mx = W/2 + wp.x * sc;
+    var my = H/2 + wp.z * sc;
+    mx = Math.max(4, Math.min(W-4, mx));
+    my = Math.max(4, Math.min(H-4, my));
+    ctx.beginPath();
+    ctx.arc(mx, my, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = wp.col;
+    ctx.fill();
+  });
+
+  // Player
+  var px = Math.max(5, Math.min(W-5, W/2 + cam.position.x * sc));
+  var py = Math.max(5, Math.min(H-5, H/2 + cam.position.z * sc));
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(camYaw);
+  ctx.beginPath();
+  ctx.moveTo(0, -7); ctx.lineTo(4, 4); ctx.lineTo(-4, 4);
+  ctx.closePath();
+  ctx.fillStyle = '#1A1A18';
+  ctx.fill();
+  ctx.restore();
+}
+
+// ================================================================
+// ANIMATION LOOP
+// ================================================================
+var _lastTime = 0;
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (!now) now = 0;
+  var dt = Math.min(0.05, (now - _lastTime) / 1000);
+  _lastTime = now;
+  var t = clock.getElapsedTime();
+
+  // WASD movement
+  var spd  = 10;
+  var sinY = Math.sin(camYaw);
+  var cosY = Math.cos(camYaw);
+  var dx   = 0, dz = 0;
+  if (keys['KeyW']     || keys['ArrowUp'])    { dx -= sinY * spd * dt; dz -= cosY * spd * dt; }
+  if (keys['KeyS']     || keys['ArrowDown'])  { dx += sinY * spd * dt; dz += cosY * spd * dt; }
+  if (keys['KeyA']     || keys['ArrowLeft'])  { dx -= cosY * spd * dt; dz += sinY * spd * dt; }
+  if (keys['KeyD']     || keys['ArrowRight']) { dx += cosY * spd * dt; dz -= sinY * spd * dt; }
+  cam.position.x = Math.max(-85, Math.min(85, cam.position.x + dx));
+  cam.position.z = Math.max(-85, Math.min(85, cam.position.z + dz));
+  cam.position.y = 2.2;
+
+  var qY = new THREE.Quaternion(); qY.setFromAxisAngle(new THREE.Vector3(0,1,0), camYaw);
+  var qP = new THREE.Quaternion(); qP.setFromAxisAngle(new THREE.Vector3(1,0,0), camPitch);
+  cam.quaternion.copy(qY).multiply(qP);
+
+  // Pedestrian wander
+  objects.forEach(function(obj) {
+    if (obj.userData.type === 'pedestrian') {
+      obj.position.x = obj.userData.ox + Math.sin(t * 0.35 + obj.userData.woff) * obj.userData.wrad;
+      obj.position.z = obj.userData.oz + Math.cos(t * 0.25 + obj.userData.woff) * obj.userData.wrad * 0.5;
+    }
+    if (obj.userData.type === 'bus') {
+      obj.position.x += Math.sin(t * 0.08 + obj.userData.busOff) * 0.012;
+    }
+    if (obj.userData.glowM) {
+      var hue = ((t * 0.06 + obj.position.x * 0.01) % 1 + 1) % 1;
+      obj.userData.glowM.material.color.setHSL(
+        currentLayer === 'proposal' ? 0.58 : (currentLayer === 'extract' ? 0.02 : 0.38),
+        0.7,
+        0.4 + 0.12 * Math.sin(t * 1.5 + obj.position.z)
+      );
+    }
+    if (obj.userData.isBeacon && obj.userData.beaconRing) {
+      obj.userData.beaconRing.rotation.z = t * 0.5;
+      var sc2 = 1 + 0.08 * Math.sin(t * 2);
+      obj.userData.beaconRing.scale.set(sc2, sc2, 1);
+    }
+  });
+
+  renderer.render(scene, cam);
+  drawMinimap();
+}
+</script>
+</body>
+</html>
