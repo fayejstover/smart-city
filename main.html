@@ -35,6 +35,9 @@ body {
 
 #c { cursor: crosshair; }
 .enter-btn { cursor: pointer; }
+#intro * { cursor: auto; }
+#intro .enter-btn { cursor: pointer; }
+#intro .ltab { cursor: pointer; }
 .ltab { cursor: pointer; }
 .obj-card-close { cursor: pointer; }
 .narr-location-btn { cursor: pointer; }
@@ -102,6 +105,7 @@ body {
   background: var(--surface);
   display: flex;
   transition: opacity .8s var(--ease), visibility .8s;
+  cursor: auto;
 }
 #intro.gone { opacity:0; visibility:hidden; pointer-events:none; }
 
@@ -1048,13 +1052,13 @@ function initThree() {
     if (mouseDown && e.clientX > 340) {
       var dx = e.clientX - lastMX;
       var dy = e.clientY - lastMY;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) _dragMoved = true;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _dragMoved = true;
       camYaw   -= dx * 0.003;
       camPitch -= dy * 0.003;
       camPitch  = Math.max(-1.0, Math.min(0.5, camPitch));
+      lastMX = e.clientX;
+      lastMY = e.clientY;
     }
-    lastMX = e.clientX;
-    lastMY = e.clientY;
 
     if (e.clientX > 340) {
       mVec.x = ((e.clientX - 340) / (window.innerWidth - 340)) * 2 - 1;
@@ -1072,11 +1076,15 @@ function initThree() {
     lastMX = e.clientX;
     lastMY = e.clientY;
   });
-  window.addEventListener('mouseup', function() { mouseDown = false; });
+  // mouseup handler merged below with click detection
 
-  // pointerup is more reliable than click on trackpads
-  document.getElementById('c').addEventListener('pointerup', function(e) {
-    if (_dragMoved) return;
+  // Use mouseup on window - fires reliably on all devices including trackpads
+  // _dragMoved guards against camera-drag being treated as a click
+  window.addEventListener('mouseup', function(e) {
+    mouseDown = false;
+    if (!entered) return;
+    if (e.clientX <= 340) return; // click was on nav panel
+    if (_dragMoved) return;       // was a camera drag, not a click
     mVec.x = ((e.clientX - 340) / (window.innerWidth - 340)) * 2 - 1;
     mVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
     ray.setFromCamera(mVec, cam);
