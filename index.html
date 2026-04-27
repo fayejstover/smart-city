@@ -27,10 +27,14 @@ body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text-1);
-  overflow: hidden;
-  height: 100vh;
+  overflow-y: auto;
   width: 100vw;
   cursor: auto;
+}
+/* Once entered, lock scroll for 3D view */
+body.in-city {
+  overflow: hidden;
+  height: 100vh;
 }
 
 #c { cursor: crosshair; }
@@ -104,6 +108,7 @@ body {
   position: fixed; inset: 0; z-index: 200;
   background: var(--surface);
   display: flex;
+  overflow-y: auto;
   transition: opacity .8s var(--ease), visibility .8s;
   cursor: auto;
 }
@@ -136,8 +141,9 @@ body {
   padding: 4rem;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   max-width: 600px;
+  min-height: min-content;
 }
 .intro-eyebrow {
   font-family: var(--mono);
@@ -567,6 +573,109 @@ body {
 .wt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .wt-text { font-family: var(--mono); font-size: .58rem; color: var(--text-2); }
 .wt-text strong { color: var(--text-1); font-weight: 500; }
+
+/* ── OBJECT OVERLAY (fixed on canvas, always visible when object clicked) ── */
+#obj-overlay {
+  position: fixed;
+  bottom: 1.5rem;
+  left: calc(var(--nav-w) + 1.5rem);
+  right: 1.5rem;
+  z-index: 60;
+  display: none;
+  pointer-events: all;
+}
+#obj-overlay.on { display: block; }
+
+.oo-inner {
+  background: rgba(255,255,255,0.97);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  overflow: hidden;
+  max-width: 680px;
+  animation: oo-in .22s var(--ease);
+}
+@keyframes oo-in {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.oo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .75rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.oo-layer-tag {
+  font-family: var(--mono);
+  font-size: .52rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.oo-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: .85rem;
+  line-height: 1;
+  padding: .15rem .3rem;
+  border-radius: 3px;
+  transition: all .15s;
+}
+.oo-close:hover { color: var(--text-1); background: var(--border); }
+.oo-body {
+  padding: 1rem 1.1rem 1.15rem;
+  display: flex;
+  gap: 1.4rem;
+  align-items: flex-start;
+}
+.oo-left { flex: 1; min-width: 0; }
+.oo-label {
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  color: var(--text-1);
+  margin-bottom: .35rem;
+}
+.oo-desc {
+  font-size: .78rem;
+  line-height: 1.72;
+  color: var(--text-2);
+  font-weight: 300;
+}
+.oo-right {
+  flex-shrink: 0;
+  width: 200px;
+  border-left: 1px solid var(--border);
+  padding-left: 1.1rem;
+}
+.oo-quote-label {
+  font-family: var(--mono);
+  font-size: .46rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: .4rem;
+}
+.oo-quote-text {
+  font-family: var(--mono);
+  font-size: .62rem;
+  line-height: 1.68;
+  color: var(--text-2);
+  font-style: italic;
+}
+.oo-src {
+  font-family: var(--mono);
+  font-size: .5rem;
+  color: var(--text-3);
+  margin-top: .5rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
 </style>
 </head>
 <body>
@@ -663,6 +772,28 @@ body {
 <div id="waypoint-toast">
   <div class="wt-dot" id="wt-dot"></div>
   <div class="wt-text" id="wt-text"></div>
+</div>
+
+
+<!-- OBJECT INFO OVERLAY -->
+<div id="obj-overlay">
+  <div class="oo-inner">
+    <div class="oo-header">
+      <span class="oo-layer-tag" id="oo-tag"></span>
+      <button class="oo-close" onclick="closeOverlay()">&#10005; close</button>
+    </div>
+    <div class="oo-body">
+      <div class="oo-left">
+        <div class="oo-label" id="oo-lbl"></div>
+        <div class="oo-desc"  id="oo-desc"></div>
+      </div>
+      <div class="oo-right" id="oo-right">
+        <div class="oo-quote-label">From the readings</div>
+        <div class="oo-quote-text" id="oo-quote"></div>
+        <div class="oo-src" id="oo-src"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -911,25 +1042,33 @@ function renderNarrative(l) {
 function showCard(hk) {
   var data = HD[hk] ? HD[hk][currentLayer] : null;
   if (!data) return;
-  var card = document.getElementById('objcard');
-  if (!card) return;
-  document.getElementById('oc-src').textContent  = data.src;
-  document.getElementById('oc-src').style.color  = NARRATIVES[currentLayer].layerCol;
-  document.getElementById('oc-lbl').textContent  = data.lbl;
-  document.getElementById('oc-desc').textContent = data.desc;
-  var qt = document.getElementById('oc-quote');
-  if (data.quote) { qt.textContent = data.quote; qt.classList.add('on'); }
-  else            { qt.textContent = '';          qt.classList.remove('on'); }
-  card.classList.add('on');
-  setTimeout(function() {
-    card.scrollIntoView({ behavior:'smooth', block:'nearest' });
-  }, 60);
+  showOverlay(data);
 }
 
-function closeCard() {
-  var card = document.getElementById('objcard');
-  if (card) card.classList.remove('on');
+function showOverlay(data) {
+  var layerNames = { surface:'01 Surface', extract:'02 Extraction', proposal:'03 Proposal' };
+  var layerCols  = { surface:'#2D6A4F',    extract:'#C0392B',        proposal:'#1D4E8F'    };
+  var tag = document.getElementById('oo-tag');
+  tag.textContent  = layerNames[currentLayer];
+  tag.style.color  = layerCols[currentLayer];
+  document.getElementById('oo-lbl').textContent  = data.lbl;
+  document.getElementById('oo-desc').textContent = data.desc;
+  var right = document.getElementById('oo-right');
+  if (data.quote) {
+    document.getElementById('oo-quote').textContent = data.quote;
+    document.getElementById('oo-src').textContent   = data.src;
+    right.style.display = 'block';
+  } else {
+    right.style.display = 'none';
+  }
+  document.getElementById('obj-overlay').classList.add('on');
 }
+
+function closeOverlay() {
+  document.getElementById('obj-overlay').classList.remove('on');
+}
+
+function closeCard() { closeOverlay(); }
 
 // ================================================================
 // LAYER SWITCHING
@@ -993,6 +1132,7 @@ document.getElementById('enterbtn').addEventListener('click', function() {
   if (entered) return;
   entered = true;
   document.getElementById('intro').classList.add('gone');
+  document.body.classList.add('in-city');
   initThree();
   setTimeout(function() {
     document.getElementById('nav').classList.add('on');
@@ -1089,10 +1229,10 @@ function initThree() {
     mVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
     ray.setFromCamera(mVec, cam);
     var hits = ray.intersectObjects(allMeshes, false);
-    if (!hits.length) { closeCard(); return; }
+    if (!hits.length) { closeOverlay(); return; }
     var obj = hits[0].object;
     while (obj && !obj.userData.hk) obj = obj.parent;
-    if (!obj || !obj.userData.hk)   { closeCard(); return; }
+    if (!obj || !obj.userData.hk)   { closeOverlay(); return; }
     showCard(obj.userData.hk);
   });
 }
